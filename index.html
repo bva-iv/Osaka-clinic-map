@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Find a Clinic Near You – Foreign-Patient-Friendly Medical Institutions (Osaka)</title>
+<title>Osaka Clinics & Hospitals for Foreign Patients – Map | 大阪 外国人患者対応の医療機関マップ</title>
+<meta name="description" content="Find hospitals, clinics and dental clinics in Osaka that accept foreign patients. Map with nearest-clinic finder, English/Chinese/Korean and other language support, opening hours in English. 大阪府の外国人患者を受け入れる医療機関(病院・診療所・歯科)を地図で検索。">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://bva-iv.github.io/Osaka-clinic-map/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Osaka Clinics & Hospitals for Foreign Patients – Map | 大阪 外国人患者対応の医療機関マップ">
+<meta property="og:description" content="Find hospitals, clinics and dental clinics in Osaka that accept foreign patients. Map with nearest-clinic finder, English/Chinese/Korean and other language support, opening hours in English. 大阪府の外国人患者を受け入れる医療機関(病院・診療所・歯科)を地図で検索。">
+<meta property="og:url" content="https://bva-iv.github.io/Osaka-clinic-map/">
+<meta name="twitter:card" content="summary">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root { --bg:#f6f7f9; --card:#fff; --ink:#1c2430; --muted:#5d6877; --line:#dde2e8; --accent:#1f6feb;
@@ -43,6 +51,9 @@
   .pop .row { margin-top:5px; }
   .pop details { margin-top:6px; font-size:.82rem; }
   .pop a { color:#1f6feb; }
+  .about { padding:8px 16px; font-size:.85rem; border-top:1px solid var(--line); }
+  .about summary { cursor:pointer; font-weight:600; }
+  .about p { margin:6px 0; max-width:900px; }
   footer { font-size:.75rem; color:var(--muted); padding:8px 16px; border-top:1px solid var(--line); }
   footer a { color:var(--accent); }
   @media (max-width: 760px) {
@@ -94,6 +105,19 @@
   <div id="list" aria-live="polite"></div>
   <div id="map" role="application" aria-label="Map of clinics"></div>
 </main>
+
+<details class="about">
+  <summary>About this map / このマップについて</summary>
+  <p>This map shows hospitals, clinics and dental clinics in <strong>Osaka Prefecture</strong> that have told the government they accept
+  <strong>foreign patients</strong>. Use it to find the nearest medical institution, check which languages are supported (English, Chinese, Korean,
+  Vietnamese, Portuguese, Spanish and more), see opening hours in English, and get directions. It is based on the official list published by the
+  Ministry of Health, Labour and Welfare and the Japan Tourism Agency. More cities will be added.</p>
+  <p lang="ja">大阪府内で外国人患者の受け入れを行っている<strong>病院・診療所・歯科診療所</strong>を地図上で探せます。現在地から近い医療機関、
+  対応言語(英語・中国語・韓国語・ベトナム語など)、診療時間(英訳つき)、道順を確認できます。厚生労働省・観光庁が公表している
+  「外国人患者を受け入れる医療機関の情報を取りまとめたリスト」をもとに作成しています。今後、ほかの地域も追加予定です。</p>
+  <p><small>Emergency? Call 119 (ambulance). This site does not give medical advice. / 救急の場合は119番へ。</small></p>
+</details>
+<noscript><p style="padding:16px">This map needs JavaScript. List of clinics: https://www.mhlw.go.jp/stf/newpage_05774.html</p></noscript>
 
 <footer>
   Data: Ministry of Health, Labour and Welfare &amp; Japan Tourism Agency, “List of medical institutions that accept foreign patients”
