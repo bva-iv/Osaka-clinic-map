@@ -99,7 +99,7 @@
   Data: Ministry of Health, Labour and Welfare &amp; Japan Tourism Agency, “List of medical institutions that accept foreign patients”
   (<a href="https://www.mhlw.go.jp/stf/newpage_05774.html" target="_blank" rel="noopener">source</a>), retrieved October 2026.
   Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
-  Pins are placed from addresses and can be off by tens of meters. Languages, hours and services are as reported by each institution
+  Pins are placed from addresses and can be off by tens of meters. Opening hours were translated into English from the original Japanese (the original is shown in each popup), so please double-check. Languages, hours and services are as reported by each institution
   and may have changed — <strong>please call before you go</strong>. In an emergency, call 119.
   Your location is used only in your browser and is never sent or stored.
 </footer>
@@ -157,7 +157,8 @@
     h += '<div class="row">📍 〒' + esc(c.zip) + ' ' + esc(c.addr) + (c.addr_en ? '<br><small>' + esc(c.addr_en) + '</small>' : '') + esc(d) + '</div>';
     if (c.approx) h += '<div class="row"><small>⚠ Approximate pin (neighborhood level) – use the address.</small></div>';
     if (c.tel) h += '<div class="row">📞 <a href="tel:' + esc(c.tel.replace(/[^0-9+]/g, '')) + '">' + esc(c.tel) + '</a></div>';
-    if (c.hours) h += '<div class="row">🕘 ' + esc(c.hours) + '</div>';
+    if (c.hours_en || c.hours) h += '<div class="row">🕘 ' + esc(c.hours_en || c.hours) +
+      (c.hours && c.hours !== c.hours_en ? '<details><summary>Original (Japanese)</summary>' + esc(c.hours) + '</details>' : '') + '</div>';
     h += '<div class="row">🗣 ' + esc(langs) + '</div>';
     if (c.depts) h += '<details><summary>Departments &amp; languages (as listed)</summary>' + esc(c.depts) + '</details>';
     h += '<div class="row"><a href="' + dir + '" target="_blank" rel="noopener">Directions</a>';
