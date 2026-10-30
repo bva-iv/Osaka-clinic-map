@@ -35,6 +35,12 @@
   main { flex:1; display:grid; grid-template-columns: minmax(300px, 400px) 1fr; min-height:0; border-top:1px solid var(--line); }
   #list { overflow-y:auto; padding:8px; background:var(--bg); }
   #map { min-height:360px; }
+  .placeform { display:flex; gap:6px; flex:1 1 320px; max-width:520px; }
+  .placeform input { flex:1; min-width:0; }
+  .placeres { flex-basis:100%; font-size:.85rem; color:var(--muted); }
+  .placeres button { font-size:.8rem; padding:3px 8px; margin:2px 4px 2px 0; }
+  .tag.cash { color:#b15c00; border-color:#b15c00; }
+  .tag.card { color:var(--dental); border-color:var(--dental); }
   .msg { font-size:.88rem; color:var(--muted); padding:6px 8px; }
   .item { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer; }
   .item:hover { border-color:var(--accent); }
@@ -70,6 +76,11 @@
 </header>
 
 <div class="controls">
+  <form id="placeForm" class="placeform" autocomplete="off">
+    <input type="search" id="placeQ" placeholder="Search a place or station, e.g. Umeda Station" aria-label="Search a place or station">
+    <button type="submit" id="btnSearch">Search</button>
+  </form>
+  <div id="placeRes" class="placeres" aria-live="polite"></div>
   <button class="primary" id="btnLocate">📍 Use my location</button>
   <button id="btnPick" title="If location sharing is blocked, tap a spot on the map instead">Or tap the map to set location</button>
   <select id="fType" aria-label="Type">
@@ -96,6 +107,11 @@
     <option value="VI">Vietnamese</option><option value="PT">Portuguese</option><option value="ES">Spanish</option>
     <option value="RU">Russian</option><option value="TL">Filipino</option><option value="ID">Indonesian</option>
     <option value="TH">Thai</option><option value="FR">French</option><option value="DE">German</option><option value="NE">Nepali</option>
+  </select>
+  <select id="fPay" aria-label="Payment">
+    <option value="">Any payment</option>
+    <option value="card">Cards / cashless accepted</option>
+    <option value="cash">Cash only</option>
   </select>
   <label class="chk"><input type="checkbox" id="f24"> 24/7</label>
   <input type="search" id="fText" placeholder="Search name / area" aria-label="Search">
@@ -138,13 +154,25 @@
   var LANG_LABEL = { EN:'English', ZH:'Chinese', KO:'Korean', VI:'Vietnamese', PT:'Portuguese', ES:'Spanish', RU:'Russian',
                      TL:'Filipino', ID:'Indonesian', TH:'Thai', FR:'French', DE:'German', NE:'Nepali' };
 
+  // Free CARTO basemap key (gives English/Latin map labels). Leave '' to use the OpenStreetMap map (Japanese labels) only.
+  var CARTO_KEY = 'cb1_4y6o_1_2f751c1330bea9f189f81215';
+
   var map = L.map('map').setView([34.6937, 135.5023], 11);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
+  });
+  if (CARTO_KEY) {
+    var carto = L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=' + encodeURIComponent(CARTO_KEY), {
+      maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+    });
+    carto.addTo(map);
+    L.control.layers({ 'Map labels: English': carto, 'Map labels: 日本語': osm }, null, { collapsed: false, position: 'topright' }).addTo(map);
+  } else {
+    osm.addTo(map);
+  }
 
   var markerLayer = L.layerGroup().addTo(map);
-  var meMarker = null, me = null, picking = false;
+  var meMarker = null, me = null, meLabel = '', picking = false;
   var markerById = {};
 
   function esc(s) {
@@ -164,11 +192,24 @@
     var t = ['<span class="tag ' + c.type + '">' + TYPE_LABEL[c.type] + '</span>'];
     if (c.h24 === 1) t.push('<span class="tag">24/7</span>');
     else if (c.h24 === 2) t.push('<span class="tag">24/7 (limited – see note)</span>');
+    if (c.pay && c.pay.cash_only) t.push('<span class="tag cash">Cash only</span>');
+    else if (c.pay && (c.pay.cards.length || c.pay.card_other || c.pay.cashless.length)) t.push('<span class="tag card">Cards / cashless</span>');
     if (c.jmip) t.push('<span class="tag">JMIP certified</span>');
     if (c.interp) t.push('<span class="tag">Medical interpreter</span>');
     if (c.remote) t.push('<span class="tag">Remote interpreting</span>');
     if (c.device) t.push('<span class="tag">Translation device</span>');
     return t.join('');
+  }
+
+  function payText(c) {
+    var p = c.pay || {};
+    if (p.cash_only) return '<strong>Cash only</strong> (no cards or cashless services listed)';
+    var parts = [];
+    if (p.cards && p.cards.length) parts.push('Cards: ' + esc(p.cards.join(', ') + (p.card_other ? ' + others' : '')));
+    else if (p.card_other) parts.push('Cards: other brands');
+    if (p.cashless && p.cashless.length) parts.push('Cashless: ' + esc(p.cashless.join(', ') + (p.cashless_other ? ' + others' : '')));
+    else if (p.cashless_other) parts.push('Other cashless services');
+    return parts.join('<br>') + '<br><small>Please confirm payment methods when you call.</small>';
   }
 
   function popupHtml(c) {
@@ -184,7 +225,9 @@
     if (c.hours_en || c.hours) h += '<div class="row">🕘 ' + esc(c.hours_en || c.hours) +
       (c.hours && c.hours !== c.hours_en ? '<details><summary>Original (Japanese)</summary>' + esc(c.hours) + '</details>' : '') + '</div>';
     h += '<div class="row">🗣 ' + esc(langs) + '</div>';
-    if (c.depts) h += '<details><summary>Departments &amp; languages (as listed)</summary>' + esc(c.depts) + '</details>';
+    if (c.depts_en && c.depts_en.length) h += '<div class="row">🩺 ' + esc(c.depts_en.join(', ')) + '</div>';
+    h += '<div class="row">💳 ' + payText(c) + '</div>';
+    if (c.depts) h += '<details><summary>Original departments &amp; languages (Japanese)</summary>' + esc(c.depts) + '</details>';
     h += '<div class="row"><a href="' + dir + '" target="_blank" rel="noopener">Directions</a>';
     if (c.web) h += ' · <a href="' + esc(c.web) + '" target="_blank" rel="noopener">Website</a>';
     h += '</div></div>';
@@ -198,6 +241,9 @@
     if (d && c.d.indexOf(d) < 0) return false;
     if (l && c.langs.indexOf(l) < 0) return false;
     if (document.getElementById('f24').checked && !c.h24) return false;
+    var pay = document.getElementById('fPay').value;
+    if (pay === 'cash' && !(c.pay && c.pay.cash_only)) return false;
+    if (pay === 'card' && (!c.pay || c.pay.cash_only)) return false;
     if (q && (c.name + ' ' + c.en + ' ' + c.addr + ' ' + c.addr_en + ' ' + c.area).toLowerCase().indexOf(q) < 0) return false;
     return true;
   }
@@ -219,7 +265,7 @@
 
     var list = document.getElementById('list'), shown = rows.slice(0, 30), html = '';
     if (!me) html += '<div class="msg">Share your location (or tap the map) to sort by distance. Showing ' + shown.length + ' of ' + rows.length + '.</div>';
-    else html += '<div class="msg">Closest first (straight-line distance). Showing ' + shown.length + ' of ' + rows.length + ' matches.</div>';
+    else html += '<div class="msg">Closest to ' + (meLabel ? esc(meLabel) : 'your location') + ', nearest first (straight-line distance). Showing ' + shown.length + ' of ' + rows.length + ' matches.</div>';
     if (!rows.length) html = '<div class="msg">No matches. Try removing a filter.</div>';
     shown.forEach(function (c) {
       html += '<div class="item" data-id="' + c.id + '">' + (me ? '<span class="d">' + fmtDist(c._d) + '</span>' : '') +
@@ -239,10 +285,12 @@
     document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
-  function setMe(lat, lng, zoomTo) {
+  function setMe(lat, lng, zoomTo, label) {
     me = { lat: lat, lng: lng };
+    meLabel = label || '';
     if (meMarker) map.removeLayer(meMarker);
-    meMarker = L.marker([lat, lng], { title: 'You are here', zIndexOffset: 1000 }).addTo(map).bindTooltip('You are here', { permanent: false });
+    var tip = label ? label : 'You are here';
+    meMarker = L.marker([lat, lng], { title: tip, zIndexOffset: 1000 }).addTo(map).bindTooltip(tip, { permanent: !!label });
     var rows = render();
     if (zoomTo && rows.length) {
       var near = rows.slice(0, 5).map(function (c) { return [c.lat, c.lng]; }).concat([[lat, lng]]);
@@ -274,7 +322,39 @@
     setMe(e.latlng.lat, e.latlng.lng, false);
   });
 
-  ['fType', 'fDept', 'fLang', 'f24'].forEach(function (id) { document.getElementById(id).addEventListener('change', render); });
+  // --- Place / station search (OpenStreetMap Nominatim, free; runs only when you press Search)
+  var lastResults = [];
+  function jumpTo(r) {
+    var label = r.label;
+    setMe(r.lat, r.lng, true, label);
+    document.getElementById('placeRes').innerHTML = 'Showing clinics closest to <strong>' + esc(label) + '</strong>.' +
+      (lastResults.length > 1 ? ' Other matches: ' + lastResults.map(function (x, i) {
+        return i === lastResults.indexOf(r) ? '' : '<button type="button" data-i="' + i + '">' + esc(x.short) + '</button>';
+      }).join('') : '');
+  }
+  document.getElementById('placeRes').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-i]'); if (b) jumpTo(lastResults[+b.getAttribute('data-i')]);
+  });
+  document.getElementById('placeForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var q = document.getElementById('placeQ').value.trim(), out = document.getElementById('placeRes');
+    if (!q) return;
+    out.textContent = 'Searching…';
+    var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=0&accept-language=en&countrycodes=jp' +
+              '&viewbox=134.9,35.1,135.9,34.2&q=' + encodeURIComponent(q);
+    fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (res) {
+      if (!res.length) { out.textContent = 'No place found. Try another spelling, or add the city (e.g. “Umeda Station Osaka”).'; return; }
+      lastResults = res.map(function (x) {
+        var parts = String(x.display_name).split(',').map(function (s) { return s.trim(); });
+        return { lat: +x.lat, lng: +x.lon, label: (x.name || parts[0]), short: parts.slice(0, 2).join(', ') };
+      });
+      jumpTo(lastResults[0]);
+    }).catch(function () {
+      out.textContent = 'Place search is unavailable right now. You can still use “Use my location” or tap the map.';
+    });
+  });
+
+  ['fType', 'fDept', 'fLang', 'fPay', 'f24'].forEach(function (id) { document.getElementById(id).addEventListener('change', render); });
   document.getElementById('fText').addEventListener('input', render);
 
   render();
