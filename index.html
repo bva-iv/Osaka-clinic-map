@@ -214,7 +214,7 @@
 
   function popupHtml(c) {
     var d = me ? ' · ' + fmtDist(km(me, c)) + ' away (straight line)' : '';
-    var langs = c.langs.length ? c.langs.map(function (l) { return LANG_LABEL[l] || l; }).join(', ') : 'Not listed';
+    var langs = c.lang_many ? 'Many languages (see notes below)' : (c.lang_names && c.lang_names.length ? c.lang_names.join(', ') : 'Not listed');
     var dir = 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng;
     var h = '<div class="pop"><h3>' + esc(c.name) + '</h3>';
     if (c.en) h += '<div>' + esc(c.en) + '</div>';
@@ -225,6 +225,7 @@
     if (c.hours_en || c.hours) h += '<div class="row">🕘 ' + esc(c.hours_en || c.hours) +
       (c.hours && c.hours !== c.hours_en ? '<details><summary>Original (Japanese)</summary>' + esc(c.hours) + '</details>' : '') + '</div>';
     h += '<div class="row">🗣 ' + esc(langs) + '</div>';
+    if (c.notes_en) h += '<div class="row">ℹ️ ' + esc(c.notes_en) + '</div>';
     if (c.depts_en && c.depts_en.length) h += '<div class="row">🩺 ' + esc(c.depts_en.join(', ')) + '</div>';
     h += '<div class="row">💳 ' + payText(c) + '</div>';
     if (c.depts) h += '<details><summary>Original departments &amp; languages (Japanese)</summary>' + esc(c.depts) + '</details>';
